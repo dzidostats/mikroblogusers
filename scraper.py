@@ -17,7 +17,7 @@ END_ID = args.end_id
 
 # --- KONFIGURACJA ---
 INITIAL_CONCURRENT = 10
-MAX_CONCURRENT = 20      # ograniczamy równoległość dla bezpieczeństwa
+MAX_CONCURRENT = 20
 BATCH_SIZE = 1000
 DB_FILE = Path(f"profiles_{START_ID}_{END_ID}.db")
 CHECKPOINT_FILE = Path(f"checkpoint_{START_ID}_{END_ID}.txt")
@@ -69,7 +69,6 @@ async def fetch(client, user_id, sem, adjust_concurrent):
                 if "application/json" in resp.headers.get("content-type", ""):
                     stats["success"] += 1
                     adjust_concurrent(success=True)
-                    # losowe opóźnienie między 0.5 a 1.5s
                     await asyncio.sleep(random.uniform(0.5, 1.5))
                     return resp.json()["user"]
                 else:
