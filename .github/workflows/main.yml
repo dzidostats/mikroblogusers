@@ -1,13 +1,23 @@
-name: Run JBZD Scraper
+name: Run JBZD Scraper Parallel
 
 on:
-  workflow_dispatch:   # uruchamianie ręczne
-  schedule:
-    - cron: '0 3 * * *'  # opcjonalnie: codziennie o 03:00 UTC
+  workflow_dispatch:
+    inputs:
+      start_id:
+        description: 'Start ID'
+        required: true
+        default: '1'
+      end_id:
+        description: 'End ID'
+        required: true
+        default: '100000'
 
 jobs:
   scraper:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        job_id: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]  # 15 jobów
 
     steps:
       - name: Checkout repository
@@ -22,10 +32,14 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run scraper
-        run: python scraper.py
+        run: |
+          START=$(( ( ${{ matrix.job_id }} - 1 ) * 100000 + 1 ))
+          END=$(( ${{ matrix.job_id }} * 100000 ))
+          echo "🔹 Job ${{ matrix.job_id }}: START=$START, END=$END"
+          python scraper.py --start_id $START --end_id $END
 
       - name: Upload SQLite artifact
         uses: actions/upload-artifact@v3
         with:
-          name: profiles-db
+          name: profiles-job${{ matrix.job_id }}-db
           path: profiles.db
