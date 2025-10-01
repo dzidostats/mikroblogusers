@@ -30,7 +30,7 @@ jobs:
           python scraper.py --start_id $START --end_id $END
 
       - name: Upload SQLite artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: profiles-job${{ matrix.job_id }}-db
           path: profiles_*.db
@@ -42,7 +42,7 @@ jobs:
 
       - name: Commit checkpoint
         run: |
-          git add checkpoint_${{ matrix.job_id }}_${{ github.run_id }}.txt
+          git add checkpoint_${{ matrix.job_id }}.txt
           git commit -m "Update checkpoint for job ${{ matrix.job_id }}"
           git push
         env:
