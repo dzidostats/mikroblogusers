@@ -2,22 +2,13 @@ name: Run JBZD Scraper Parallel
 
 on:
   workflow_dispatch:
-    inputs:
-      start_id:
-        description: 'Start ID'
-        required: true
-        default: '1'
-      end_id:
-        description: 'End ID'
-        required: true
-        default: '100000'
 
 jobs:
   scraper:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        job_id: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]  # 15 jobów
+        job_id: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
 
     steps:
       - name: Checkout repository
@@ -42,4 +33,17 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: profiles-job${{ matrix.job_id }}-db
-          path: profiles.db
+          path: profiles_*.db
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit checkpoint
+        run: |
+          git add checkpoint_${{ matrix.job_id }}_${{ github.run_id }}.txt
+          git commit -m "Update checkpoint for job ${{ matrix.job_id }}"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
