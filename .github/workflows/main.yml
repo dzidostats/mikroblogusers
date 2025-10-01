@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        job_id: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+        job_id: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
 
     steps:
       - name: Checkout repository
@@ -24,8 +24,9 @@ jobs:
 
       - name: Run scraper
         run: |
-          START=$(( ( ${{ matrix.job_id }} - 1 ) * 100000 + 1 ))
-          END=$(( ${{ matrix.job_id }} * 100000 ))
+          # zakresy po 75_000 profili
+          START=$(( ( ${{ matrix.job_id }} - 1 ) * 75000 + 1 ))
+          END=$(( ${{ matrix.job_id }} * 75000 ))
           echo "🔹 Job ${{ matrix.job_id }}: START=$START, END=$END"
           python scraper.py --start_id $START --end_id $END
 
