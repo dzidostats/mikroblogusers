@@ -3,8 +3,9 @@ import httpx
 import random
 import aiosqlite
 from pathlib import Path
-from tqdm import tqdm
 import argparse
+from tqdm import tqdm
+import os
 
 # --- ARGUMENTY ---
 parser = argparse.ArgumentParser()
@@ -18,7 +19,7 @@ END_ID = args.end_id
 # --- KONFIGURACJA ---
 INITIAL_CONCURRENT = 10
 MAX_CONCURRENT = 20
-BATCH_SIZE = 1000
+BATCH_SIZE = 500  # batch zapis co 500 profili
 DB_FILE = Path(f"profiles_{START_ID}_{END_ID}.db")
 CHECKPOINT_FILE = Path(f"checkpoint_{START_ID}_{END_ID}.txt")
 URL_TEMPLATE = "https://m.jbzd.com.pl/mikroblog/user/profile/{id}"
@@ -30,6 +31,8 @@ HEADERS = {
 }
 
 stats = {"success": 0, "errors": 0}
+
+use_tqdm = not os.getenv("GITHUB_ACTIONS")  # wyłącza pasek w Actions
 
 
 # --- INICJALIZACJA BAZY ---
@@ -59,22 +62,19 @@ async def fetch(client, user_id, sem, adjust_concurrent):
         for attempt in range(5):
             try:
                 resp = await client.get(url, timeout=10)
-
                 if resp.status_code == 404:
                     stats["errors"] += 1
                     return None
 
                 resp.raise_for_status()
-
                 if "application/json" in resp.headers.get("content-type", ""):
                     stats["success"] += 1
                     adjust_concurrent(success=True)
-                    await asyncio.sleep(random.uniform(0.5, 1.5))
+                    await asyncio.sleep(random.uniform(0.5, 1.2))
                     return resp.json()["user"]
                 else:
                     stats["errors"] += 1
                     return None
-
             except Exception:
                 stats["errors"] += 1
                 adjust_concurrent(success=False)
@@ -116,10 +116,9 @@ async def main():
 
     def adjust_concurrent(success: bool):
         nonlocal current_concurrent
-        if success:
-            if current_concurrent < MAX_CONCURRENT:
-                current_concurrent += 1
-        else:
+        if success and current_concurrent < MAX_CONCURRENT:
+            current_concurrent += 1
+        elif not success:
             current_concurrent = max(1, current_concurrent - 1)
         sem._value = current_concurrent
 
@@ -136,7 +135,7 @@ async def main():
 
     async with aiosqlite.connect(DB_FILE) as db:
         async with httpx.AsyncClient(headers=HEADERS, follow_redirects=True) as client:
-            for user_id in tqdm(range(start, END_ID + 1), desc=f"Pobieranie {START_ID}-{END_ID}"):
+            for user_id in tqdm(range(start, END_ID + 1), desc=f"Pobieranie {START_ID}-{END_ID}", disable=not use_tqdm, mininterval=10):
                 data = await fetch(client, user_id, sem, adjust_concurrent)
                 if data:
                     batch.append(data)
@@ -145,10 +144,7 @@ async def main():
                     await save_batch(db, batch)
                     batch.clear()
                     CHECKPOINT_FILE.write_text(str(user_id))
-
-                tqdm.write(
-                    f"✅ Pobrano: {stats['success']} | ❌ Błędy: {stats['errors']} | 🔄 MAX_CONCURRENT: {current_concurrent}"
-                )
+                    tqdm.write(f"✅ Pobrano {user_id - start + 1}/{END_ID - start + 1}")
 
             if batch:
                 await save_batch(db, batch)
