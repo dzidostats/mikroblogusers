@@ -1,0 +1,31 @@
+name: Run JBZD Scraper
+
+on:
+  workflow_dispatch:   # uruchamianie ręczne
+  schedule:
+    - cron: '0 3 * * *'  # opcjonalnie: codziennie o 03:00 UTC
+
+jobs:
+  scraper:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run scraper
+        run: python scraper.py
+
+      - name: Upload SQLite artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: profiles-db
+          path: profiles.db
