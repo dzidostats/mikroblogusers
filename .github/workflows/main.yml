@@ -9,41 +9,47 @@ jobs:
     strategy:
       matrix:
         worker: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
-
     steps:
-      # Checkout repo z kodem
+      # Checkout repo główne z kodem
       - uses: actions/checkout@v3
         with:
-          repository: dzidostats/mikroblogusers   # repo główne z kodem
+          repository: dzidostats/mikroblogusers
           path: mainrepo
+          token: ${{ secrets.WORKER_PAT }}
 
+      # Ustawienie Pythona
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.11"
 
+      # Instalacja dependencies
       - name: Install dependencies
         run: pip install requests
 
+      # Uruchomienie checkera 404 dla danego workera
       - name: Run 404 checker
         working-directory: mainrepo
         run: |
-          python check_404_parallel.py ${{ matrix.worker }} 20 1 1000
+          python check_404_parallel.py ${{ matrix.worker }} 20 1 100000
 
-      # Checkout dedykowanego repo workera
+      # Checkout repo worker (dedykowane dla danego workera)
       - uses: actions/checkout@v3
         with:
           repository: dzidostats/mikroblogusers-worker-${{ matrix.worker }}
-          token: ${{ secrets.WORKER_PAT }}  # użycie PAT zamiast domyślnego tokena
-          ref: main                        # upewniamy się, że istnieje branch main
+          token: ${{ secrets.WORKER_PAT }}
           path: workerrepo
+          ref: main
+          persist-credentials: false
+          fetch-depth: 1
 
+      # Skopiowanie wyników i push do repo worker
       - name: Copy results and push
         run: |
           cp mainrepo/404_ids_worker_${{ matrix.worker }}.txt workerrepo/
           cd workerrepo
-          git config --global user.name "github-actions"
-          git config --global user.email "actions@github.com"
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
           git add 404_ids_worker_${{ matrix.worker }}.txt
           git commit -m "Update results for worker ${{ matrix.worker }}" || echo "Nothing to commit"
           git push
