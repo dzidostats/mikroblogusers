@@ -8,8 +8,8 @@ worker_id = int(sys.argv[1])
 workers_total = int(sys.argv[2])
 start_id = int(sys.argv[3])
 end_id = int(sys.argv[4])
-threads = 10  # liczba równoległych wątków
-delay_between_requests = 0.05
+threads = 5  # liczba równoległych wątków
+delay_between_requests = 0.3
 
 # Wyznaczenie zakresu ID dla tego workera
 total_ids = end_id - start_id + 1
