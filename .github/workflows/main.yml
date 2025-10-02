@@ -9,11 +9,12 @@ jobs:
     strategy:
       matrix:
         worker: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
+
     steps:
-      # Checkout repo z kodem
+      # Checkout repo głównego z kodem
       - uses: actions/checkout@v3
         with:
-          repository: dzidostats/mikroblogusers   # repo główne z kodem
+          repository: dzidostats/mikroblogusers   # tu jest Twój kod i skrypt Pythona
           path: mainrepo
 
       - name: Set up Python
@@ -27,13 +28,14 @@ jobs:
       - name: Run 404 checker
         working-directory: mainrepo
         run: |
-          python check_404_parallel.py ${{ matrix.worker }} 20 1 10000
+          python check_404_parallel.py ${{ matrix.worker }} 20 1 1000
 
-      # Checkout dedykowanego repo workera
+      # Checkout dedykowanego repo workera (może być puste)
       - uses: actions/checkout@v3
         with:
           repository: dzidostats/mikroblogusers-worker-${{ matrix.worker }}
           token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ""        # <- to umożliwia checkout pustego repo
           path: workerrepo
 
       - name: Copy results and push
