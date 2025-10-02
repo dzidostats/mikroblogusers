@@ -40,7 +40,7 @@ jobs:
           token: ${{ secrets.WORKER_PAT }}
           path: workerrepo
           ref: main
-          persist-credentials: false
+          persist-credentials: true
           fetch-depth: 1
 
       # Skopiowanie wyników i push do repo worker
