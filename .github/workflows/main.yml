@@ -1,55 +1,35 @@
-name: Check 404 IDs
+name: Scraping JBZD users
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: # ręczne uruchamianie
 
 jobs:
-  check_404_job:
+  scrape:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        worker: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
+        part: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
     steps:
-      # Checkout repo główne z kodem
       - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v5
         with:
-          repository: dzidostats/mikroblogusers
-          path: mainrepo
-          token: ${{ secrets.WORKER_PAT }}
+          python-version: '3.11'
 
-      # Ustawienie Pythona
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
+      - run: pip install aiohttp tqdm
 
-      # Instalacja dependencies
-      - name: Install dependencies
-        run: pip install requests
-
-      # Uruchomienie checkera 404 dla danego workera
-      - name: Run 404 checker
-        working-directory: mainrepo
+      - name: Run scraper
         run: |
-          python check_404_parallel.py ${{ matrix.worker }} 20 1 1270000
+          START=$(( 64000 * ${{ matrix.part }} + 1 ))
+          END=$(( 64000 * ( ${{ matrix.part }} + 1 ) ))
+          mkdir -p output
+          python users.py $START $END output/users_${{ matrix.part }}.jsonl
 
-      # Checkout repo worker (dedykowane dla danego workera)
-      - uses: actions/checkout@v3
-        with:
-          repository: dzidostats/mikroblogusers-worker-${{ matrix.worker }}
-          token: ${{ secrets.WORKER_PAT }}
-          path: workerrepo
-          ref: main
-          persist-credentials: true
-          fetch-depth: 1
-
-      # Skopiowanie wyników i push do repo worker
-      - name: Copy results and push
+      - name: Commit results
         run: |
-          cp mainrepo/404_ids_worker_${{ matrix.worker }}.txt workerrepo/
-          cd workerrepo
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add 404_ids_worker_${{ matrix.worker }}.txt
-          git commit -m "Update results for worker ${{ matrix.worker }}" || echo "Nothing to commit"
+          git add output/users_${{ matrix.part }}.jsonl
+          git commit -m "Add scraped users part ${{ matrix.part }}" || echo "No changes"
           git push
