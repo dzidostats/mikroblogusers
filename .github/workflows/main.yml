@@ -22,7 +22,7 @@ jobs:
 
       - name: Run 404 checker
         run: |
-          python check_404_worker.py ${{ matrix.worker }} 20 1 100000
+          python check_404_parallel.py ${{ matrix.worker }} 20 1 100000
 
       - name: Commit and push 404 IDs
         run: |
@@ -32,5 +32,4 @@ jobs:
           git commit -m "Update 404 IDs worker ${{ matrix.worker }}" || echo "Nothing to commit"
           git push
         env:
-          # GitHub automatycznie udostępnia GITHUB_TOKEN
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
