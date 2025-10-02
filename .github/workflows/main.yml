@@ -27,7 +27,7 @@ jobs:
       - name: Run 404 checker
         working-directory: mainrepo
         run: |
-          python check_404_parallel.py ${{ matrix.worker }} 20 1 100000
+          python check_404_parallel.py ${{ matrix.worker }} 20 1 10000
 
       # Checkout dedykowanego repo workera
       - uses: actions/checkout@v3
