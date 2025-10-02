@@ -1,58 +1,57 @@
-import requests
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import threading
-import time
+name: Check 404 IDs
 
-start_id = 1
-end_id = 100_000
-max_workers = 2  # liczba workerów
-delay_between_requests = 0.05
+on:
+  workflow_dispatch:
 
-# Lock do synchronizacji numeru workera
-worker_lock = threading.Lock()
-worker_count = 0
+jobs:
+  check_404_job:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        worker: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install requests
+      - name: Run 404 checker for this worker
+        run: |
+          python - <<EOF
+          import requests
+          import time
 
-def get_worker_file():
-    global worker_count
-    with worker_lock:
-        worker_count += 1
-        return f"404_ids_worker_{worker_count}.txt"
+          start_id = 1
+          end_id = 100000
+          workers_total = 20
+          worker_id = ${ { matrix.worker } }
 
-def check_id_range(worker_id, id_range):
-    filename = f"404_ids_worker_{worker_id}.txt"
-    with open(filename, "w") as f:
-        for user_id in id_range:
-            url = f"https://m.jbzd.com.pl/mikroblog/user/profile/{user_id}"
-            try:
-                response = requests.get(url, timeout=5)
-                if response.status_code == 404:
-                    print(f"Worker {worker_id} - 404: {user_id}")
-                    f.write(f"{user_id}\n")
-            except requests.RequestException:
-                pass
-            time.sleep(delay_between_requests)
+          delay_between_requests = 0.05
 
-# Podział zakresu ID na bloki dla workerów
-def chunk_range(start, end, chunks):
-    total = end - start + 1
-    chunk_size = total // chunks
-    ranges = []
-    for i in range(chunks):
-        chunk_start = start + i * chunk_size
-        chunk_end = start + (i + 1) * chunk_size - 1 if i < chunks - 1 else end
-        ranges.append(range(chunk_start, chunk_end + 1))
-    return ranges
+          # Wyznacz zakres dla tego joba
+          total_ids = end_id - start_id + 1
+          chunk_size = total_ids // workers_total
+          chunk_start = start_id + (worker_id - 1) * chunk_size
+          chunk_end = start_id + worker_id * chunk_size - 1 if worker_id < workers_total else end_id
 
-# Start wątków
-id_ranges = chunk_range(start_id, end_id, max_workers)
-threads = []
+          filename = f"404_ids_worker_{worker_id}.txt"
 
-for i, r in enumerate(id_ranges, start=1):
-    t = threading.Thread(target=check_id_range, args=(i, r))
-    t.start()
-    threads.append(t)
-
-for t in threads:
-    t.join()
-
-print("Gotowe! Każdy worker zapisał swoje ID 404 w osobnym pliku.")
+          with open(filename, "w") as f:
+              for user_id in range(chunk_start, chunk_end + 1):
+                  url = f"https://m.jbzd.com.pl/mikroblog/user/profile/{user_id}"
+                  try:
+                      r = requests.get(url, timeout=5)
+                      if r.status_code == 404:
+                          print(f"Worker {worker_id} - 404: {user_id}")
+                          f.write(f"{user_id}\n")
+                  except requests.RequestException:
+                      pass
+                  time.sleep(delay_between_requests)
+          EOF
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: 404-ids-worker-${{ matrix.worker }}
+          path: 404_ids_worker_${{ matrix.worker }}.txt
