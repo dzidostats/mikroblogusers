@@ -1,7 +1,7 @@
 name: Scraping JBZD users
 
 on:
-  workflow_dispatch: # ręczne uruchamianie
+  workflow_dispatch:
 
 jobs:
   scrape:
@@ -24,12 +24,30 @@ jobs:
           START=$(( 64000 * ${{ matrix.part }} + 1 ))
           END=$(( 64000 * ( ${{ matrix.part }} + 1 ) ))
           mkdir -p output
-          python users.py $START $END output/users_${{ matrix.part }}.jsonl
+          python users.py $START $END users_${{ matrix.part }}.jsonl
+
+      - name: Upload part
+        uses: actions/upload-artifact@v4
+        with:
+          name: parts
+          path: users_${{ matrix.part }}.jsonl
+
+  commit:
+    runs-on: ubuntu-latest
+    needs: scrape
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Download all parts
+        uses: actions/download-artifact@v4
+        with:
+          name: parts
+          path: output
 
       - name: Commit results
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add output/users_${{ matrix.part }}.jsonl
-          git commit -m "Add scraped users part ${{ matrix.part }}" || echo "No changes"
-          git push
+          git add output/
+          git commit -m "Add scraped users (20 parts)" || echo "No changes"
+          git push origin main
