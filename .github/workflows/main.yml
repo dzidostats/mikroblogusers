@@ -21,8 +21,8 @@ jobs:
 
       - name: Run scraper
         run: |
-          START=$(( 64000 * ${{ matrix.part }} + 1 ))
-          END=$(( 64000 * ( ${{ matrix.part }} + 1 ) ))
+          START=$(( 1000 * ${{ matrix.part }} + 1 ))
+          END=$(( 1000 * ( ${{ matrix.part }} + 1 ) ))
           mkdir -p output
           python users.py $START $END users_${{ matrix.part }}.jsonl
 
