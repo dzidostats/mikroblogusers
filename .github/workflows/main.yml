@@ -21,8 +21,8 @@ jobs:
 
       - name: Run scraper
         run: |
-          START=$(( 100 * ${{ matrix.part }} + 1 ))
-          END=$(( 100 * ( ${{ matrix.part }} + 1 ) ))
+          START=$(( 65000 * ${{ matrix.part }} + 1 ))
+          END=$(( 65000 * ( ${{ matrix.part }} + 1 ) ))
           python users.py $START $END users_${{ matrix.part }}.jsonl
 
       - name: Upload part
