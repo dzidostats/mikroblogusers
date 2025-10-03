@@ -21,15 +21,14 @@ jobs:
 
       - name: Run scraper
         run: |
-          START=$(( 1000 * ${{ matrix.part }} + 1 ))
-          END=$(( 1000 * ( ${{ matrix.part }} + 1 ) ))
-          mkdir -p output
+          START=$(( 100 * ${{ matrix.part }} + 1 ))
+          END=$(( 100 * ( ${{ matrix.part }} + 1 ) ))
           python users.py $START $END users_${{ matrix.part }}.jsonl
 
       - name: Upload part
         uses: actions/upload-artifact@v4
         with:
-          name: parts
+          name: part-${{ matrix.part }}
           path: users_${{ matrix.part }}.jsonl
 
   commit:
@@ -41,7 +40,6 @@ jobs:
       - name: Download all parts
         uses: actions/download-artifact@v4
         with:
-          name: parts
           path: output
 
       - name: Commit results
