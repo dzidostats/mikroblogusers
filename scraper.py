@@ -1,9 +1,13 @@
 import itertools
 import json
 import requests
+import sys
 import time
 
-OUTPUT_FILE = "jbzd_users.jsonl"
+# --- KONFIGURACJA ---
+OUTPUT_FILE = sys.argv[1] if len(sys.argv) > 1 else "jbzd_users.jsonl"
+START_IDX = int(sys.argv[2]) if len(sys.argv) > 2 else 0
+END_IDX = int(sys.argv[3]) if len(sys.argv) > 3 else 17576  # 26^3 = 17576
 PER_PAGE = 50
 SLEEP_BETWEEN_REQUESTS = 0.5
 
@@ -22,8 +26,11 @@ def all_combinations():
     for combo in itertools.product(letters, repeat=3):
         yield "".join(combo)
 
+# Wybierz tylko zakres przypisany do tego joba
+all_combos = list(all_combinations())[START_IDX:END_IDX]
+
 with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
-    for phrase in all_combinations():
+    for phrase in all_combos:
         page = 1
         print(f"Pobieranie: '{phrase}' (strona {page})")
 
@@ -42,4 +49,4 @@ with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
             page += 1
             time.sleep(SLEEP_BETWEEN_REQUESTS)
 
-print("✅ Zakończono pobieranie wszystkich kombinacji.")
+print(f"✅ Zakres {START_IDX}-{END_IDX} zakończony.")
