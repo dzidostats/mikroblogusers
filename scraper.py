@@ -1,66 +1,43 @@
-import itertools
 import json
-import requests
 import sys
-import time
+import requests
+from bs4 import BeautifulSoup
+from time import sleep
+from random import uniform
 
-# --- KONFIGURACJA ---
-OUTPUT_FILE = sys.argv[1] if len(sys.argv) > 1 else "jbzd_users.jsonl"
-START_IDX = int(sys.argv[2]) if len(sys.argv) > 2 else 0
-END_IDX = int(sys.argv[3]) if len(sys.argv) > 3 else 17576  # liczba kombinacji
-PER_PAGE = 50
-SLEEP_BETWEEN_REQUESTS = 0.5
-MAX_PAGES_PER_PHRASE = 20
-MAX_RETRIES_429 = 5
-INITIAL_DELAY_429 = 5  # sekundy
-
-def fetch_users(phrase, page=1):
-    url = "https://m.jbzd.com.pl/search/users"
-    params = {"phrase": phrase, "page": page, "per_page": PER_PAGE}
-    delay = INITIAL_DELAY_429
-
-    for attempt in range(MAX_RETRIES_429):
-        response = requests.get(url, params=params)
-        if response.status_code == 200:
-            return response.json()
-        elif response.status_code == 429:
-            print(f"❌ 429 dla frazy '{phrase}', strona {page}. Retry w {delay}s...")
-            time.sleep(delay)
-            delay *= 2  # opcjonalny exponential backoff
-        else:
-            print(f"❌ Błąd {response.status_code} dla frazy '{phrase}', strona {page}")
+def get_name(user_id):
+    url = f"https://jbzd.com.pl/mikroblog/user/profile/{user_id}"
+    try:
+        r = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+        if r.status_code != 200:
             return None
+        soup = BeautifulSoup(r.text, "html.parser")
+        name_tag = soup.find("h1", class_="profile__name")
+        if not name_tag:
+            return None
+        return name_tag.text.strip()
+    except Exception:
+        return None
 
-    print(f"❌ Brak odpowiedzi po {MAX_RETRIES_429} próbach dla frazy '{phrase}', strona {page}")
-    return None
+def main():
+    if len(sys.argv) != 3:
+        print("Usage: python scraper.py start_id end_id")
+        sys.exit(1)
 
-def all_combinations(length=3):
-    chars = "abcdefghijklmnopqrstuvwxyz0123456789"
-    for combo in itertools.product(chars, repeat=length):
-        yield "".join(combo)
+    start_id = int(sys.argv[1])
+    end_id = int(sys.argv[2])
+    data = {}
 
-# Wybieramy zakres dla tego joba
-all_combos = list(all_combinations())[START_IDX:END_IDX]
+    for uid in range(start_id, end_id + 1):
+        name = get_name(uid)
+        if name:
+            data[uid] = name
+        sleep(uniform(0.5, 1.5))
 
-with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
-    for phrase in all_combos:
-        page = 1
-        print(f"Pobieranie frazy: '{phrase}'")
+    filename = f"jbzd_users_{start_id}_{end_id}.json"
+    with open(filename, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    print(f"Saved {len(data)} users to {filename}")
 
-        while page <= MAX_PAGES_PER_PHRASE:
-            data = fetch_users(phrase, page)
-            if not data or "values" not in data or not data["values"]:
-                print(f"Brak danych dla frazy '{phrase}' na stronie {page}, przerywam.")
-                break
-
-            for user in data["values"]:
-                f.write(json.dumps(user, ensure_ascii=False) + "\n")
-
-            meta = data.get("meta", {})
-            if not meta.get("has_more_pages", False):
-                break  # koniec stron dla tej frazy
-
-            page += 1
-            time.sleep(SLEEP_BETWEEN_REQUESTS)
-
-print(f"✅ Zakres {START_IDX}-{END_IDX} zakończony.")
+if __name__ == "__main__":
+    main()
