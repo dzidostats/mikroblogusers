@@ -1,49 +1,31 @@
-name: Fetch JBZD Users (Parallel)
+name: JBZD Scraper
 
 on:
-  workflow_dispatch:  # uruchamianie ręczne
+  workflow_dispatch:      # uruchamianie ręczne z GitHub UI
   schedule:
-    - cron: "0 3 * * *"  # codziennie o 3:00 UTC
+    - cron: "0 2 * * *"   # codziennie o 2:00 w nocy UTC
 
 jobs:
   scrape:
-    name: "Scrape part ${{ matrix.part }}"
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        part: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
 
     steps:
-      - name: 📥 Checkout repo
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: 🐍 Set up Python
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: 📦 Install dependencies
-        run: pip install -r requirements.txt
+      - name: Install dependencies
+        run: pip install requests
 
-      - name: ⚙️ Calculate ID range
-        id: calc
-        run: |
-          TOTAL=2000
-          PARTS=20
-          SIZE=$(( TOTAL / PARTS ))
-          START=$(( ( ${{ matrix.part }} - 1 ) * SIZE + 1 ))
-          END=$(( ${{ matrix.part }} * SIZE ))
-          echo "start=$START" >> $GITHUB_OUTPUT
-          echo "end=$END" >> $GITHUB_OUTPUT
-          echo "📊 Zakres dla joba ${{ matrix.part }}: $START → $END"
+      - name: Run JBZD scraper
+        run: python scraper.py
 
-      - name: 🚀 Run JBZD scraper
-        run: |
-          mkdir -p output
-          python users_search.py ${{ steps.calc.outputs.start }} ${{ steps.calc.outputs.end }} output/users_part_${{ matrix.part }}.jsonl
-
-      - name: 📤 Upload artifact
+      - name: Upload JSONL result as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: jbzd-users-part-${{ matrix.part }}
-          path: output/users_part_${{ matrix.part }}.jsonl
+          name: jbzd_users
+          path: jbzd_users.jsonl
