@@ -9,7 +9,7 @@ OUTPUT_FILE = sys.argv[1] if len(sys.argv) > 1 else "jbzd_users.jsonl"
 START_IDX = int(sys.argv[2]) if len(sys.argv) > 2 else 0
 END_IDX = int(sys.argv[3]) if len(sys.argv) > 3 else None  # None = wszystkie kombinacje
 PER_PAGE = 50
-SLEEP_BETWEEN_REQUESTS = 0.5
+SLEEP_BETWEEN_REQUESTS = 2
 MAX_PAGES_PER_PHRASE = 20  # pobierz 20 stron dla każdej kombinacji
 
 # Funkcja pobierająca użytkowników dla danej frazy i strony
