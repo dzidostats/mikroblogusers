@@ -13,7 +13,7 @@ HEADERS = {
     "user-agent": "Mozilla/5.0"
 }
 MAX_RETRIES = 10
-CONCURRENCY = 5
+CONCURRENCY = 1
 
 
 async def fetch_json(session, url, retries=MAX_RETRIES):
