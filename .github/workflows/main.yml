@@ -1,13 +1,15 @@
-name: JBZD Scraper
+name: JBZD Parallel Scraper
 
 on:
-  workflow_dispatch:      # uruchamianie ręczne z GitHub UI
-  schedule:
-    - cron: "0 2 * * *"   # codziennie o 2:00 w nocy UTC
+  workflow_dispatch:
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        part: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]
+      max-parallel: 20
 
     steps:
       - name: Checkout repo
@@ -21,11 +23,37 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      - name: Run JBZD scraper
-        run: python scraper.py
+      - name: Run JBZD scraper part ${{ matrix.part }}
+        run: |
+          START=$(( ${{ matrix.part }} * 879 ))  # 17576 / 20 ≈ 879
+          END=$(( START + 879 ))
+          python scraper.py jbzd_users_part_${{ matrix.part }}.jsonl $START $END
 
-      - name: Upload JSONL result as artifact
+      - name: Upload part as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: jbzd_users
-          path: jbzd_users.jsonl
+          name: jbzd_part_${{ matrix.part }}
+          path: jbzd_users_part_${{ matrix.part }}.jsonl
+
+  commit-results:
+    runs-on: ubuntu-latest
+    needs: scrape
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Download all parts
+        uses: actions/download-artifact@v4
+        with:
+          path: results
+
+      - name: Move all parts to root
+        run: mv results/*/*.jsonl . || true
+
+      - name: Commit all JSONL parts
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add jbzd_users_part_*.jsonl
+          git commit -m "Add JBZD user data (20 parts)"
+          git push
