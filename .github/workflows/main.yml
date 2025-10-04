@@ -28,7 +28,7 @@ jobs:
       - name: ⚙️ Calculate ID range
         id: calc
         run: |
-          TOTAL=1300000
+          TOTAL=20000
           PARTS=20
           SIZE=$(( TOTAL / PARTS ))
           START=$(( ( ${{ matrix.part }} - 1 ) * SIZE + 1 ))
