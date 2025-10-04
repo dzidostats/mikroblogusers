@@ -1,51 +1,49 @@
-name: Scraping JBZD users
+name: Fetch JBZD Users (Parallel)
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:  # uruchamianie ręczne
+  schedule:
+    - cron: "0 3 * * *"  # codziennie o 3:00 UTC
 
 jobs:
   scrape:
+    name: "Scrape part ${{ matrix.part }}"
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false
       matrix:
-        part: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+        part: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+
     steps:
-      - uses: actions/checkout@v3
+      - name: 📥 Checkout repo
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
-      - run: pip install aiohttp tqdm
+      - name: 📦 Install dependencies
+        run: pip install -r requirements.txt
 
-      - name: Run scraper
+      - name: ⚙️ Calculate ID range
+        id: calc
         run: |
-          START=$(( 65000 * ${{ matrix.part }} + 1 ))
-          END=$(( 65000 * ( ${{ matrix.part }} + 1 ) ))
-          python users.py $START $END users_${{ matrix.part }}.jsonl
+          TOTAL=1300000
+          PARTS=20
+          SIZE=$(( TOTAL / PARTS ))
+          START=$(( ( ${{ matrix.part }} - 1 ) * SIZE + 1 ))
+          END=$(( ${{ matrix.part }} * SIZE ))
+          echo "start=$START" >> $GITHUB_OUTPUT
+          echo "end=$END" >> $GITHUB_OUTPUT
+          echo "📊 Zakres dla joba ${{ matrix.part }}: $START → $END"
 
-      - name: Upload part
+      - name: 🚀 Run JBZD scraper
+        run: |
+          mkdir -p output
+          python users_search.py ${{ steps.calc.outputs.start }} ${{ steps.calc.outputs.end }} output/users_part_${{ matrix.part }}.jsonl
+
+      - name: 📤 Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: part-${{ matrix.part }}
-          path: users_${{ matrix.part }}.jsonl
-
-  commit:
-    runs-on: ubuntu-latest
-    needs: scrape
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Download all parts
-        uses: actions/download-artifact@v4
-        with:
-          path: output
-
-      - name: Commit results
-        run: |
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
-          git add output/
-          git commit -m "Add scraped users (20 parts)" || echo "No changes"
-          git push origin main
+          name: jbzd-users-part-${{ matrix.part }}
+          path: output/users_part_${{ matrix.part }}.jsonl
