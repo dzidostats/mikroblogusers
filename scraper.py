@@ -9,7 +9,7 @@ OUTPUT_FILE = sys.argv[1] if len(sys.argv) > 1 else "jbzd_users.jsonl"
 START_IDX = int(sys.argv[2]) if len(sys.argv) > 2 else 0
 END_IDX = int(sys.argv[3]) if len(sys.argv) > 3 else 17576  # 26^3 = 17576
 PER_PAGE = 50
-SLEEP_BETWEEN_REQUESTS = 0.5
+SLEEP_BETWEEN_REQUESTS = 2
 
 def fetch_users(phrase, page=1):
     url = "https://m.jbzd.com.pl/search/users"
