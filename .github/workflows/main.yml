@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        part: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]
+        part: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]  # 20 równoległych jobów
       max-parallel: 20
 
     steps:
@@ -23,9 +23,21 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      - name: Run JBZD scraper part ${{ matrix.part }}
+      - name: Calculate dynamic range
+        id: range
         run: |
-          python scraper.py jbzd_users_part_${{ matrix.part }}.jsonl ${{ matrix.part }} 20
+          TOTAL_COMBOS=$(python -c "import itertools; print(len(list(itertools.product('abcdefghijklmnopqrstuvwxyz0123456789', repeat=3))))")
+          JOBS=20
+          PER_JOB=$(( (TOTAL_COMBOS + JOBS - 1) / JOBS ))
+          START=$(( ${{ matrix.part }} * PER_JOB ))
+          END=$(( START + PER_JOB ))
+          echo "START=$START" >> $GITHUB_ENV
+          echo "END=$END" >> $GITHUB_ENV
+          echo "TOTAL_COMBOS=$TOTAL_COMBOS, JOB ${{ matrix.part }}: $START-$END"
+
+      - name: Run JBZD scraper
+        run: |
+          python scraper.py jbzd_users_part_${{ matrix.part }}.jsonl $START $END
 
       - name: Upload part as artifact
         uses: actions/upload-artifact@v4
@@ -53,5 +65,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add jbzd_users_part_*.jsonl
-          git commit -m "Add JBZD user data (20 parts)"
+          git commit -m "Add JBZD user data (20 parts)" || echo "No changes to commit"
           git push
