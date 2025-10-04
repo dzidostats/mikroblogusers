@@ -1,4 +1,4 @@
-name: JBZD Parallel Scraper
+name: JBZD Scraper Part 1
 
 on:
   workflow_dispatch:
@@ -8,62 +8,46 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        part: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]  # 20 równoległych jobów
-      max-parallel: 20
-
+        part: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: 3.11
 
-      - name: Install dependencies
-        run: pip install requests
+      - run: pip install requests beautifulsoup4
 
-      - name: Calculate dynamic range
-        id: range
+      - name: Run scraper
         run: |
-          TOTAL_COMBOS=$(python -c "import itertools; print(len(list(itertools.product('abcdefghijklmnopqrstuvwxyz0123456789', repeat=3))))")
-          JOBS=20
-          PER_JOB=$(( (TOTAL_COMBOS + JOBS - 1) / JOBS ))
-          START=$(( ${{ matrix.part }} * PER_JOB ))
-          END=$(( START + PER_JOB ))
-          echo "START=$START" >> $GITHUB_ENV
-          echo "END=$END" >> $GITHUB_ENV
-          echo "TOTAL_COMBOS=$TOTAL_COMBOS, JOB ${{ matrix.part }}: $START-$END"
+          START=$(( ( ${{ matrix.part }} - 1 ) * 32500 + 1 ))
+          END=$(( ${{ matrix.part }} * 32500 ))
+          echo "Scraping IDs $START-$END"
+          python scraper.py $START $END
 
-      - name: Run JBZD scraper
-        run: |
-          python scraper.py jbzd_users_part_${{ matrix.part }}.jsonl $START $END
-
-      - name: Upload part as artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: jbzd_part_${{ matrix.part }}
-          path: jbzd_users_part_${{ matrix.part }}.jsonl
+          name: jbzd-${{ matrix.part }}
+          path: jbzd_users_*.json
 
-  commit-results:
-    runs-on: ubuntu-latest
+  commit:
     needs: scrape
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Download all parts
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
-          path: results
+          path: ./results
 
-      - name: Move all parts to root
-        run: mv results/*/*.jsonl . || true
+      - run: mv results/*/*.json .
 
-      - name: Commit all JSONL parts
+      - name: Commit results
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add jbzd_users_part_*.jsonl
-          git commit -m "Add JBZD user data (20 parts)" || echo "No changes to commit"
+          git add jbzd_users_*.json
+          git commit -m "Part 1: Add scraped JBZD users"
           git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
