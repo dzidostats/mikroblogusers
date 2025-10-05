@@ -1,43 +1,67 @@
+import aiohttp
+import asyncio
 import json
 import sys
-import requests
-from bs4 import BeautifulSoup
-from time import sleep
-from random import uniform
 
-def get_name(user_id):
+start_id = int(sys.argv[1])
+end_id = int(sys.argv[2])
+output_file = sys.argv[3]
+failed_file = sys.argv[4]
+
+MAX_RETRIES = 3
+CONCURRENCY = 5
+TIMEOUT = 5
+
+names = []
+failed_ids = []
+
+semaphore = asyncio.Semaphore(CONCURRENCY)
+
+async def fetch_user(session, user_id):
     url = f"https://jbzd.com.pl/mikroblog/user/profile/{user_id}"
-    try:
-        r = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
-        if r.status_code != 200:
-            return None
-        soup = BeautifulSoup(r.text, "html.parser")
-        name_tag = soup.find("h1", class_="profile__name")
-        if not name_tag:
-            return None
-        return name_tag.text.strip()
-    except Exception:
-        return None
+    for attempt in range(1, MAX_RETRIES + 1):
+        async with semaphore:
+            try:
+                async with session.get(url, timeout=TIMEOUT) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        if "user" in data and "name" in data["user"]:
+                            return data["user"]["name"]
+                        return None
+                    elif resp.status == 404:
+                        return None
+                    elif resp.status == 429:
+                        print(f"[RATE LIMIT] ID {user_id} – czekam 10s")
+                        await asyncio.sleep(10)
+                    else:
+                        print(f"[WARN] ID {user_id} → HTTP {resp.status} (próba {attempt}/{MAX_RETRIES})")
+                        await asyncio.sleep(1)
+            except Exception as e:
+                print(f"[ERROR] ID {user_id}: {type(e).__name__} ({e}), próba {attempt}/{MAX_RETRIES}")
+                await asyncio.sleep(1)
+    failed_ids.append(user_id)
+    return None
 
-def main():
-    if len(sys.argv) != 3:
-        print("Usage: python scraper.py start_id end_id")
-        sys.exit(1)
 
-    start_id = int(sys.argv[1])
-    end_id = int(sys.argv[2])
-    data = {}
+async def main():
+    connector = aiohttp.TCPConnector(limit=CONCURRENCY)
+    timeout = aiohttp.ClientTimeout(total=None)
+    async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
+        tasks = [fetch_user(session, uid) for uid in range(start_id, end_id + 1)]
+        results = await asyncio.gather(*tasks)
 
-    for uid in range(start_id, end_id + 1):
-        name = get_name(uid)
+    for name in results:
         if name:
-            data[uid] = name
-        sleep(uniform(0.5, 1.5))
+            names.append(name)
 
-    filename = f"jbzd_users_{start_id}_{end_id}.json"
-    with open(filename, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-    print(f"Saved {len(data)} users to {filename}")
+    with open(output_file, "w", encoding="utf-8") as f:
+        json.dump(names, f, ensure_ascii=False, indent=2)
+
+    with open(failed_file, "w", encoding="utf-8") as f:
+        json.dump(failed_ids, f, ensure_ascii=False, indent=2)
+
+    print(f"✅ Zapisano {len(names)} nazw, ⚠️ {len(failed_ids)} błędów")
+
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
