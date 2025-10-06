@@ -48,7 +48,7 @@ jobs:
         if: ${{ always() }}
         uses: actions/upload-artifact@v3
         with:
-          name: jbzd-job-${{ "%03d" | format(matrix.job_index) }}
+          name: jbzd-job-${{ matrix.job_index }}
           path: jobs_output/job_${{ matrix.job_index }}.json
 
   merge_and_commit:
