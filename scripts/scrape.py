@@ -9,7 +9,7 @@ output_file = sys.argv[3]
 failed_file = sys.argv[4]
 
 MAX_RETRIES = 3
-CONCURRENCY = 5
+CONCURRENCY = 2
 TIMEOUT = 5
 
 names = []
