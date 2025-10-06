@@ -22,7 +22,8 @@ jobs:
         run: pip install requests
 
       - name: Fetch users and save JSON
-        run: python mikroblogusers/scripts/fetch_jbzd_users.py ${{ matrix.job_index }}
+        working-directory: mikroblogusers
+        run: python scripts/fetch_jbzd_users.py ${{ matrix.job_index }}
 
   commit_results:
     runs-on: ubuntu-latest
