@@ -25,8 +25,8 @@ jobs:
       - name: Calculate range
         id: calc
         run: |
-          START=$(( ( ${{ matrix.job_id }} - 1 ) * 200 + 1 ))
-          END=$(( ${{ matrix.job_id }} * 200 ))
+          START=$(( ( ${{ matrix.job_id }} - 1 ) * 65000 + 1 ))
+          END=$(( ${{ matrix.job_id }} * 65000 ))
           echo "start=$START" >> $GITHUB_OUTPUT
           echo "end=$END" >> $GITHUB_OUTPUT
 
