@@ -1,6 +1,9 @@
 name: Fetch JBZD Users
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
@@ -30,15 +33,19 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install requests
+      - name: Install dependencies
         run: pip install requests
 
-      - name: Fetch users
-        run: |
-          mkdir -p jobs_output
-          python scripts/fetch_jbzd_users.py ${{ matrix.job_index }}
+      - name: Create output folder
+        run: mkdir -p jobs_output
 
-      - name: Upload artifact
+      - name: Run fetch script
+        run: |
+          echo "Running job index ${{ matrix.job_index }}"
+          python scripts/fetch_jbzd_users.py ${{ matrix.job_index }} || (echo "Python script failed" && exit 1)
+
+      - name: Upload artifact if exists
+        if: ${{ always() }}
         uses: actions/upload-artifact@v3
         with:
           name: jbzd-job-${{ "%03d" | format(matrix.job_index) }}
