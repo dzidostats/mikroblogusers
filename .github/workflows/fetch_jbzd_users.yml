@@ -44,12 +44,22 @@ jobs:
           echo "Running job index ${{ matrix.job_index }}"
           python scripts/fetch_jbzd_users.py ${{ matrix.job_index }} || (echo "Python script failed" && exit 1)
 
-      - name: Upload artifact if exists
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v3
+      - name: Check artifact exists
+        id: check_artifact
+        run: |
+          if [ -f jobs_output/job_${{ matrix.job_index }}.json ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload artifact (only if exists)
+        if: ${{ steps.check_artifact.outputs.exists == 'true' }}
+        uses: actions/upload-artifact@v4
         with:
           name: jbzd-job-${{ matrix.job_index }}
           path: jobs_output/job_${{ matrix.job_index }}.json
+          # opcjonalnie: if-no-files-found: warn
 
   merge_and_commit:
     runs-on: ubuntu-latest
@@ -59,7 +69,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: all_jobs
 
@@ -76,9 +86,9 @@ jobs:
                   all_data.extend(data)
 
           os.makedirs("jobs_output_final", exist_ok=True)
-          chunk_size = math.ceil(len(all_data)/20)
+          chunk_size = math.ceil(len(all_data)/20) if len(all_data) else 0
           for i in range(20):
-              chunk = all_data[i*chunk_size:(i+1)*chunk_size]
+              chunk = all_data[i*chunk_size:(i+1)*chunk_size] if chunk_size else []
               with open(f"jobs_output_final/final_{i+1}.json", "w", encoding="utf-8") as fp:
                   json.dump(chunk, fp, ensure_ascii=False, indent=2)
           EOF
