@@ -5,10 +5,10 @@ on:
 
 jobs:
   scrape:
-    runs-on: ubuntu-latest
     strategy:
       matrix:
         job_index: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
@@ -22,8 +22,34 @@ jobs:
 
       - name: Run scraper
         run: |
+          mkdir -p results
           python scripts/scrape_users.py \
             --job-index ${{ matrix.job_index }} \
             --total-jobs 20 \
-            --concurrency 50 \
+            --concurrency 5 \
             --output results/users_${{ matrix.job_index }}.json
+
+      - name: Upload results
+        uses: actions/upload-artifact@v3
+        with:
+          name: users-${{ matrix.job_index }}
+          path: results/users_${{ matrix.job_index }}.json
+
+  merge_and_commit:
+    needs: scrape
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: results/
+
+      - name: Commit merged files
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add results/*.json
+          git commit -m "Add all 20 users JSON files"
+          git push
