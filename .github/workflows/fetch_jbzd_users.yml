@@ -22,39 +22,7 @@ jobs:
         run: pip install requests
 
       - name: Fetch users and save JSON
-        run: |
-          python - <<'EOF'
-          import json
-          import math
-          import os
-          import requests
-
-          # Pobranie listy użytkowników
-          url_users = "https://raw.githubusercontent.com/dzidostats/mikroblogusers/refs/heads/main/results/all_names.json"
-          usernames = requests.get(url_users).json()
-
-          # Podział na 20 jobów
-          num_jobs = 20
-          chunk_size = math.ceil(len(usernames) / num_jobs)
-          job_index = int("${{ matrix.job_index }}")
-          chunk = usernames[job_index*chunk_size:(job_index+1)*chunk_size]
-
-          results = []
-          for username in chunk:
-              try:
-                  url = f"https://jbzd.com.pl/search/users?page=1&per_page=10000&phrase={username}"
-                  r = requests.get(url)
-                  if r.status_code == 200:
-                      data = r.json()
-                      results.extend(data.get("values", []))
-              except Exception as e:
-                  print(f"Błąd przy użytkowniku {username}: {e}")
-
-          os.makedirs("jobs_output", exist_ok=True)
-          filename = f"jobs_output/job_{job_index+1}.json"
-          with open(filename, "w", encoding="utf-8") as f:
-              json.dump(results, f, ensure_ascii=False, indent=2)
-          EOF
+        run: python mikroblogusers/scripts/fetch_jbzd_users.py ${{ matrix.job_index }}
 
   commit_results:
     runs-on: ubuntu-latest
