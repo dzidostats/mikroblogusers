@@ -28,7 +28,7 @@ jobs:
           python scripts/scrape_users.py \
             --job-index ${{ matrix.job_index }} \
             --total-jobs 20 \
-            --concurrency 50 \
+            --concurrency 2 \
             --output results/users_${{ matrix.job_index }}.json
 
       - name: Upload results
