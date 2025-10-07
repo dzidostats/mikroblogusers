@@ -28,7 +28,7 @@ jobs:
           python scripts/scrape_users.py \
             --job-index ${{ matrix.job_index }} \
             --total-jobs 20 \
-            --concurrency 2 \
+            --concurrency 5 \
             --output results/users_${{ matrix.job_index }}.json
 
       - name: Upload results
@@ -37,7 +37,7 @@ jobs:
           name: users-${{ matrix.job_index }}
           path: results/users_${{ matrix.job_index }}.json
 
-    merge_and_commit:
+  merge_and_commit:
     needs: scrape
     runs-on: ubuntu-latest
     steps:
