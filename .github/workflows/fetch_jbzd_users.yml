@@ -28,14 +28,14 @@ jobs:
           python scripts/scrape_users.py \
             --job-index ${{ matrix.job_index }} \
             --total-jobs 20 \
-            --concurrency 5 \
+            --concurrency 50 \
             --output results/users_${{ matrix.job_index }}.json
 
       - name: Upload results
         uses: actions/upload-artifact@v4
         with:
           name: users-${{ matrix.job_index }}
-          path: results/users_${{ matrix.job_index }}.json
+          path: results/users_${{ matrix.job_index }}.json.gz
 
   merge_and_commit:
     needs: scrape
@@ -48,14 +48,14 @@ jobs:
         with:
           path: results/
 
-      - name: Move all JSONs to results root
+      - name: Move all GZ files to results root
         run: |
-          find results -type f -name "*.json" -exec mv {} results/ \;
+          find results -type f -name "*.gz" -exec mv {} results/ \;
 
-      - name: Commit merged files
+      - name: Commit merged GZ files
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add results/*.json
-          git commit -m "Add all 20 users JSON files" || echo "No changes to commit"
+          git add results/*.gz
+          git commit -m "Add all 20 compressed users JSON files" || echo "No changes to commit"
           git push
