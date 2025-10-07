@@ -37,7 +37,7 @@ jobs:
           name: users-${{ matrix.job_index }}
           path: results/users_${{ matrix.job_index }}.json
 
-  merge_and_commit:
+    merge_and_commit:
     needs: scrape
     runs-on: ubuntu-latest
     steps:
@@ -48,10 +48,14 @@ jobs:
         with:
           path: results/
 
+      - name: Move all JSONs to results root
+        run: |
+          find results -type f -name "*.json" -exec mv {} results/ \;
+
       - name: Commit merged files
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add results/*.json
-          git commit -m "Add all 20 users JSON files"
+          git commit -m "Add all 20 users JSON files" || echo "No changes to commit"
           git push
